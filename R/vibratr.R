@@ -5,10 +5,17 @@ library(plotly)
 
 
 # Calculate vibrance from HSL
-vibrance_HSL <- function(H, S, L) {
+vibrance_HSL <- function(H, S, L, bw = FALSE) {
   axisL <- (1 - 2 * abs(L - 0.5)) ^ 0.33
   axisS <- S ^ 0.33
-  (axisL * axisS) ^ 1.5
+  vibrance <- (axisL * axisS) ^ 1.5
+  if (bw) {
+    light_vibrance <- 1 - (1 -   L ^ 12) * (1 - S ^ 2)
+    dark_vibrance  <- 1 - (1 - ((1 - L) ^ 12)) * (1 - S ^ 2)
+    pmax(light_vibrance, dark_vibrance, vibrance)
+  } else {
+    vibrance
+  }
 }
 
 
@@ -53,7 +60,7 @@ depolar <- function(H1, H2) {
 
 
 # Generate palette from image
-.vibrance <- function(path, rescale = 100000) {
+.vibrance <- function(path, rescale = 100000, bw = FALSE) {
 
   # load image and rescale
   img_rgb <- load.image(path)
@@ -96,7 +103,7 @@ depolar <- function(H1, H2) {
     select(H, S, L, Size)
   results <- results %>%
     cbind(hsl2rgb(select(results, H, S, L))) %>%
-    mutate(Vibrance = vibrance_HSL(H, S, L)) %>%
+    mutate(Vibrance = vibrance_HSL(H, S, L, bw)) %>%
     arrange(desc(Vibrance))
   results$RGB <- apply(results, 1, function(row) {
     rgb(row[5], row[6], row[7])

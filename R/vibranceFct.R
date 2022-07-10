@@ -32,6 +32,21 @@ vibrance_HSL_3 <- function(H, S, L) {
 }
 plotVibrance(vibrance_HSL_3)
 
+vibrance_HSL_3a <- function(H, S, L, bw = TRUE) {
+  axisL <- (1 - 2 * abs(L - 0.5)) ^ 0.33
+  axisS <- S ^ 0.33
+  vibrance <- (axisL * axisS) ^ 1.5
+  if (bw) {
+    light_vibrance <- 1 - (1 -   L ^ 12) * (1 - S ^ 2)
+    dark_vibrance  <- 1 - (1 - ((1 - L) ^ 12)) * (1 - S ^ 2)
+    pmax(light_vibrance, dark_vibrance, vibrance)
+  } else {
+    vibrance
+  }
+}
+plotVibrance(vibrance_HSL_3a)
+
+
 vibrance_HSL_4 <- function(H, S, L) {
   x <- 3.5 * (0.5 - abs(L - 0.5)) +
        1.0 * S +
