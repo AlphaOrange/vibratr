@@ -6,7 +6,9 @@ library(plotly)
 
 # Calculate vibrance from HSL
 vibrance_HSL <- function(H, S, L) {
-  S * (1 - abs(2 * L - 1))
+  axisL <- (1 - 2 * abs(L - 0.5)) ^ 0.33
+  axisS <- S ^ 0.33
+  (axisL * axisS) ^ 1.5
 }
 
 
