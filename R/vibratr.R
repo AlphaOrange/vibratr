@@ -3,8 +3,10 @@ library(dplyr)
 library(tidyr)
 library(plotly)
 
+source("helper.R")
+
 # Things TODO:
-# Perceived Luminance (blue should no longer rank higher as green)
+# Perceived Luminance (blue should no longer rank higher than green)
 #   https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
 # Free clustering (no more ten clusters of black)
 # Palette generation
@@ -14,6 +16,7 @@ library(plotly)
 # from each cluster take 90%-quantile most vibrant as representative
 # generate_palette should return harmonic set of differents hues
 #   or find corresponding color in actual image to avoid smearing
+# resize image by random pixel picking
 
 
 
@@ -31,45 +34,6 @@ vibrance_HSL <- function(H, S, L, bw = FALSE) {
   }
 }
 
-
-# Transform RGB data.frame to HSL data.frame
-rgb2hsl <- function(df_rgb) {
-  df_rgb %>%
-    mutate(x = 1:nrow(.), y = 1, z = 1) %>%
-    pivot_longer(c(R, G, B), names_to = "cc") %>%
-    mutate(cc = ifelse(cc == "R", 1, ifelse(cc == "G", 2, 3))) %>%
-    select(x, y, z, cc, value) %>%
-    as.cimg(dims = c(max(.$x), 1, 1, 3)) %>%
-    RGBtoHSL %>%
-    as.data.frame %>%
-    pivot_wider(id_cols = x, names_from = cc, values_from = value) %>%
-    setNames(c("X", "H", "S", "L")) %>%
-    select(H, S, L)
-}
-
-
-# Transform HSL data.frame to RGB data.frame
-hsl2rgb <- function(df_hsl) {
-  df_hsl %>%
-    mutate(x = 1:nrow(.), y = 1, z = 1) %>%
-    pivot_longer(c(H, S, L), names_to = "cc") %>%
-    mutate(cc = ifelse(cc == "H", 1, ifelse(cc == "S", 2, 3))) %>%
-    select(x, y, z, cc, value) %>%
-    as.cimg(dims = c(max(.$x), 1, 1, 3)) %>%
-    HSLtoRGB %>%
-    as.data.frame %>%
-    pivot_wider(id_cols = x, names_from = cc, values_from = value) %>%
-    setNames(c("X", "R", "G", "B")) %>%
-    select(R, G, B)
-}
-
-
-# Polar coordinates to arcus in 360 degrees
-depolar <- function(H1, H2) {
-  arcH1 <- asin(H1)
-  arcH2 <- acos(H2) / 2 / pi * 360
-  ifelse(arcH1 >= 0, arcH2, 360 - arcH2)
-}
 
 
 # Generate palette from image
@@ -98,8 +62,9 @@ depolar <- function(H1, H2) {
   df_total <- left_join(df_rgb, df_hsl)
 
   # polar coordinates for hue
-  df_total$H1 <- sin(df_total$H / 360 * 2 * pi) / 2
-  df_total$H2 <- cos(df_total$H / 360 * 2 * pi) / 2
+  df_total <- df_total %>%
+    hue2polar %>%
+    bind_cols(df_total, .)
 
   # 20 Cluster
   df_cluster <- df_total %>% select(H1, H2, S, L)
@@ -112,7 +77,7 @@ depolar <- function(H1, H2) {
   results <- cbind(km$centers, Size = km$size) %>%
     as.data.frame %>%
     filter(Size >= min_size) %>%
-    mutate(H = depolar(H1 * 2, H2 * 2)) %>%
+    mutate(H = polar2hue(H1 * 2, H2 * 2)) %>%
     select(H, S, L, Size)
   results <- results %>%
     cbind(hsl2rgb(select(results, H, S, L))) %>%
